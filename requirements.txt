@@ -1,4 +1,5 @@
 altair==5.5.0
 fpdf==1.7.2
+matplotlib==3.7.5
 pandas==2.2.3
 streamlit==1.42.2
