@@ -1,0 +1,5 @@
+# 食事管理アプリの記録データ（個人データのためコミットしない）
+diet_log.csv
+my_foods.csv
+diet_settings.json
+__pycache__/
