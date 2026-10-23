@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>食事管理</title>
+<meta name="theme-color" content="#4c8bf5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="食事管理">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --sub: #6b7280; --line: #e5e7eb;
+    --kcal: #4c8bf5; --pro: #22a565; --over: #e4572e; --accent: #4c8bf5; --chip: #eef2f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1c2029; --text: #e8eaef; --sub: #9aa1ad; --line: #2c3240;
+      --kcal: #6ea2ff; --pro: #3cc47f; --over: #ff7a52; --accent: #6ea2ff; --chip: #262b36;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif;
+    font-size: 16px; line-height: 1.45;
+    padding: env(safe-area-inset-top) 0 calc(72px + env(safe-area-inset-bottom));
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 12px 16px; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: none; background: none; }
+  .hidden { display: none !important; }
+  h2 { font-size: 0.95rem; margin: 18px 0 8px; color: var(--sub); font-weight: 600; }
+
+  /* 日付 */
+  .datebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .datebar button { width: 44px; height: 44px; border-radius: 12px; background: var(--card); font-size: 1.2rem; }
+  .datebar .label { flex: 1; text-align: center; font-weight: 700; font-size: 1.05rem; position: relative; }
+  .datebar input[type=date] { position: absolute; inset: 0; opacity: 0; width: 100%; }
+
+  /* サマリー */
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .card { background: var(--card); border-radius: 16px; padding: 12px 14px; }
+  .card .lbl { font-size: 0.8rem; color: var(--sub); }
+  .card .val { font-size: 1.75rem; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .card .val small { font-size: 0.75rem; font-weight: 500; color: var(--sub); }
+  .bar { height: 8px; border-radius: 4px; background: var(--line); margin: 6px 0 4px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 4px; transition: width .3s; }
+  .card .note { font-size: 0.82rem; }
+
+  /* セグメント */
+  .seg { display: flex; background: var(--card); border-radius: 12px; padding: 3px; gap: 2px; }
+  .seg button { flex: 1; padding: 8px 0; border-radius: 9px; font-size: 0.92rem; color: var(--sub); }
+  .seg button.on { background: var(--accent); color: #fff; font-weight: 700; }
+  .row { display: flex; gap: 8px; margin-top: 10px; }
+  .row .seg { flex: 1; }
+
+  /* 食品チップ */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; font-size: 0.92rem; text-align: left; line-height: 1.25;
+  }
+  .chip small { display: block; font-size: 0.7rem; color: var(--sub); }
+  .chip:active { transform: scale(0.96); background: var(--chip); }
+  .chip.add { border-style: dashed; color: var(--accent); font-weight: 700; }
+
+  /* 記録一覧 */
+  .list { background: var(--card); border-radius: 16px; overflow: hidden; }
+  .meal-h { display: flex; justify-content: space-between; padding: 8px 14px; font-size: 0.8rem;
+            color: var(--sub); background: var(--chip); }
+  .item { display: flex; align-items: center; gap: 8px; padding: 10px 6px 10px 14px; border-top: 1px solid var(--line); }
+  .item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .num { font-size: 0.85rem; color: var(--sub); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .item .del { width: 36px; height: 36px; border-radius: 10px; color: var(--sub); font-size: 1.1rem; }
+  .empty { padding: 18px; text-align: center; color: var(--sub); font-size: 0.9rem; }
+
+  /* フォーム */
+  .field { display: block; margin-bottom: 10px; }
+  .field span { display: block; font-size: 0.8rem; color: var(--sub); margin-bottom: 4px; }
+  .field input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+                 background: var(--card); font-size: 16px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .check { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; font-size: 0.9rem; }
+  .check input { width: 20px; height: 20px; }
+  .btn { display: block; width: 100%; padding: 13px; border-radius: 12px; background: var(--accent);
+         color: #fff; font-weight: 700; text-align: center; }
+  .btn.sub { background: var(--card); color: var(--text); border: 1px solid var(--line); }
+  .btn + .btn { margin-top: 8px; }
+
+  /* シート */
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--bg);
+           border-radius: 20px 20px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+           max-width: 560px; margin: 0 auto; }
+  .sheet h3 { margin: 0 0 12px; font-size: 1.05rem; }
+
+  /* 履歴 */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stats .card { padding: 10px; }
+  .stats .val { font-size: 1.3rem; }
+  .chart { background: var(--card); border-radius: 16px; padding: 12px 10px 6px; margin-top: 10px; }
+  .chart .ttl { font-size: 0.85rem; font-weight: 700; margin: 0 4px 4px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart text { fill: var(--sub); font-size: 10px; }
+  .table .item .name { font-variant-numeric: tabular-nums; }
+
+  /* タブバー */
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--card);
+        border-top: 1px solid var(--line); display: flex; padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; padding: 8px 0 10px; font-size: 0.72rem; color: var(--sub); }
+  nav button b { display: block; font-size: 1.35rem; line-height: 1.3; }
+  nav button.on { color: var(--accent); font-weight: 700; }
+
+  /* トースト */
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+           bottom: calc(84px + env(safe-area-inset-bottom)); background: #222a; color: #fff;
+           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(30,34,44,.92);
+           border-radius: 14px; padding: 10px 14px; display: flex; gap: 14px; align-items: center;
+           font-size: 0.9rem; width: max-content; max-width: calc(100% - 32px); }
+  .toast button { color: #8fb6ff; font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <!-- 記録 -->
+  <section id="tab-log">
+    <div class="datebar">
+      <button id="prev" aria-label="前の日">‹</button>
+      <div class="label"><span id="dateLabel"></span><input type="date" id="datePick" aria-label="日付を選ぶ"></div>
+      <button id="next" aria-label="次の日">›</button>
+    </div>
+    <div class="summary" id="summary"></div>
+
+    <div class="row"><div class="seg" id="mealSeg"></div></div>
+    <div class="row"><div class="seg" id="amountSeg"></div></div>
+
+    <h2>タップで追加</h2>
+    <div class="chips" id="chips"></div>
+
+    <h2>この日の記録</h2>
+    <div class="list" id="dayList"></div>
+  </section>
+
+  <!-- 履歴 -->
+  <section id="tab-history" class="hidden">
+    <div class="seg" id="periodSeg"></div>
+    <div class="stats" id="stats" style="margin-top:10px"></div>
+    <div class="chart"><div class="ttl" id="kcalTtl"></div><div id="kcalChart"></div></div>
+    <div class="chart"><div class="ttl" id="proTtl"></div><div id="proChart"></div></div>
+    <h2>日別</h2>
+    <div class="list table" id="dailyTable"></div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="tab-settings" class="hidden">
+    <h2>1日の目標</h2>
+    <div class="grid2">
+      <label class="field"><span>カロリー (kcal)</span><input type="number" id="goalKcal" inputmode="numeric" min="500" step="50"></label>
+      <label class="field"><span>タンパク質 (g)</span><input type="number" id="goalPro" inputmode="numeric" min="10" step="5"></label>
+    </div>
+    <button class="btn" id="saveGoals">目標を保存</button>
+
+    <h2>マイ食品</h2>
+    <div class="list" id="myFoods"></div>
+
+    <h2>バックアップ</h2>
+    <p style="font-size:.82rem;color:var(--sub);margin:0 0 10px">記録はこの端末のブラウザに保存されます。機種変更やブラウザのデータ削除に備えて、ときどき保存してください。</p>
+    <button class="btn sub" id="exportJson">💾 バックアップを保存（JSON）</button>
+    <button class="btn sub" id="exportCsv">📄 記録をCSVで保存</button>
+    <button class="btn sub" id="importBtn">📥 バックアップから復元</button>
+    <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+  </section>
+</main>
+
+<nav>
+  <button data-tab="log" class="on"><b>🍽️</b>記録</button>
+  <button data-tab="history"><b>📈</b>履歴</button>
+  <button data-tab="settings"><b>⚙️</b>設定</button>
+</nav>
+
+<!-- 手入力シート -->
+<div id="sheet" class="hidden">
+  <div class="sheet-bg" id="sheetBg"></div>
+  <form class="sheet" id="manualForm" autocomplete="off">
+    <h3>✏️ 手入力で追加</h3>
+    <label class="field"><span>食品名</span><input id="mName" placeholder="例：牛丼 並"></label>
+    <div class="grid2">
+      <label class="field"><span>カロリー (kcal)</span><input id="mKcal" type="number" inputmode="numeric" min="0"></label>
+      <label class="field"><span>タンパク質 (g)</span><input id="mPro" type="number" inputmode="decimal" min="0" step="0.1"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="mSave" checked>マイ食品に登録（次回からタップで追加）</label>
+    <button class="btn" type="submit">追加する</button>
+    <button class="btn sub" type="button" id="sheetClose">閉じる</button>
+  </form>
+</div>
+
+<div class="toast hidden" id="toast"><span id="toastMsg"></span><button id="toastUndo">取り消す</button></div>
+
+<script>
+'use strict';
+
+// よく食べる食品（日本食品標準成分表をもとにした目安値）
+const PRESET_FOODS = [
+  ['ご飯 150g', 234, 3.8], ['食パン 6枚切1枚', 149, 5.3], ['卵 1個', 71, 6.1],
+  ['納豆 1パック', 86, 7.4], ['豆腐 半丁', 110, 10.5], ['鶏むね肉 100g', 105, 23.3],
+  ['ささみ 100g', 98, 23.9], ['サラダチキン 1個', 120, 25.0], ['鮭 1切れ', 99, 17.8],
+  ['サバ缶 1缶', 261, 31.4], ['牛乳 200ml', 126, 6.8], ['ギリシャヨーグルト', 92, 10.0],
+  ['プロテイン 1杯', 120, 22.0], ['バナナ 1本', 93, 1.1], ['味噌汁 1杯', 40, 2.5],
+].map(([name, kcal, p]) => ({ name, kcal, p }));
+const MEALS = ['朝食', '昼食', '夕食', '間食'];
+const AMOUNTS = [['×0.5', 0.5], ['×1', 1], ['×1.5', 1.5], ['×2', 2]];
+const PERIODS = [7, 14, 30, 90];
+const DEFAULT_SETTINGS = { kcal: 2100, protein: 130 };
+
+// ---------- 保存 ----------
+const store = {
+  get(key, fallback) {
+    try { const v = localStorage.getItem('diet.' + key); return v ? JSON.parse(v) : fallback; }
+    catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem('diet.' + key, JSON.stringify(value)); }
+    catch { toast('⚠️ 保存できませんでした（プライベートモードでは保存されません）'); }
+  },
+};
+let log = store.get('log', []);           // {id, date, time, meal, name, kcal, p}
+let myFoods = store.get('foods', []);     // {name, kcal, p}
+let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
+const saveLog = () => store.set('log', log);
+const saveFoods = () => store.set('foods', myFoods);
+
+// ---------- 状態 ----------
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseYmd = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parseYmd(s); d.setDate(d.getDate() + n); return ymd(d); };
+const today = () => ymd(new Date());
+const fmt = (n, digits = 0) => Number(n).toLocaleString('ja-JP', { maximumFractionDigits: digits });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function defaultMeal() {
+  const h = new Date().getHours();
+  if (h >= 4 && h < 10) return '朝食';
+  if (h >= 10 && h < 15) return '昼食';
+  if (h >= 17 && h < 23) return '夕食';
+  return '間食';
+}
+
+const state = { date: today(), meal: defaultMeal(), amount: 1, period: 7, tab: 'log' };
+
+// ---------- 共通 UI ----------
+function segment(el, items, current, onPick) {
+  el.innerHTML = items.map(([label, value]) =>
+    `<button type="button" data-v="${esc(value)}" class="${value === current ? 'on' : ''}">${esc(label)}</button>`).join('');
+  el.querySelectorAll('button').forEach((b, i) => b.onclick = () => onPick(items[i][1]));
+}
+
+let toastTimer;
+function toast(msg, undo) {
+  $('toastMsg').textContent = msg;
+  $('toastUndo').classList.toggle('hidden', !undo);
+  $('toastUndo').onclick = () => { undo(); hideToast(); };
+  $('toast').classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, undo ? 4000 : 2500);
+}
+const hideToast = () => $('toast').classList.add('hidden');
+
+// ---------- 記録 ----------
+function addEntry(name, kcal, p) {
+  const now = new Date();
+  const entry = {
+    id: now.getTime().toString(36) + Math.random().toString(36).slice(2, 6),
+    date: state.date, time: `${pad(now.getHours())}:${pad(now.getMinutes())}`, meal: state.meal,
+    name, kcal: Math.round(kcal), p: Math.round(p * 10) / 10,
+  };
+  log.push(entry);
+  saveLog();
+  state.amount = 1;
+  renderLog();
+  toast(`✅ ${name}（${entry.kcal}kcal / P${entry.p}g）`, () => {
+    log = log.filter((e) => e.id !== entry.id); saveLog(); renderLog();
+  });
+}
+
+// タップ直後にボタンが動かないよう、並び順は画面を開いたときだけ更新する
+let foodOrder = [];
+function refreshFoodOrder() { foodOrder = sortedFoods().map((f) => f.name); }
+function allFoods() {
+  const pos = (name) => { const i = foodOrder.indexOf(name); return i < 0 ? -1 : i; };
+  return sortedFoods().sort((a, b) => pos(a.name) - pos(b.name));
+}
+function sortedFoods() {
+  // よく使う順（直近60日の回数）に並べる
+  const since = addDays(today(), -60);
+  const count = {};
+  log.forEach((e) => { if (e.date >= since) { const base = e.name.replace(/ ×[\d.]+$/, ''); count[base] = (count[base] || 0) + 1; } });
+  const seen = new Set();
+  const foods = [...myFoods, ...PRESET_FOODS].filter((f) => !seen.has(f.name) && seen.add(f.name));
+  return foods.map((f, i) => ({ ...f, i })).sort((a, b) => (count[b.name] || 0) - (count[a.name] || 0) || a.i - b.i);
+}
+
+function summaryCard(label, value, unit, goal, color, ratio, note) {
+  return `<div class="card"><div class="lbl">${label}<span style="float:right">目標 ${goal}</span></div>
+    <div class="val">${value}<small> ${unit}</small></div>
+    <div class="bar"><div style="width:${Math.min(ratio, 1) * 100}%;background:${color}"></div></div>
+    <div class="note">${note}</div></div>`;
+}
+
+function renderLog() {
+  const d = parseYmd(state.date);
+  const wd = '日月火水木金土'[d.getDay()];
+  const rel = { [today()]: '今日', [addDays(today(), -1)]: '昨日' }[state.date];
+  $('dateLabel').textContent = `${d.getMonth() + 1}月${d.getDate()}日 (${wd})${rel ? '・' + rel : ''}`;
+  $('datePick').value = state.date;
+  $('next').style.visibility = state.date >= today() ? 'hidden' : 'visible';
+
+  const day = log.filter((e) => e.date === state.date);
+  const kcal = day.reduce((s, e) => s + e.kcal, 0);
+  const pro = day.reduce((s, e) => s + e.p, 0);
+  const kLeft = settings.kcal - kcal, pLeft = settings.protein - pro;
+  $('summary').innerHTML =
+    summaryCard('カロリー', fmt(kcal), 'kcal', fmt(settings.kcal),
+      kLeft < 0 ? 'var(--over)' : 'var(--kcal)', kcal / settings.kcal,
+      kLeft >= 0 ? `残り <b>${fmt(kLeft)}</b> kcal` : `<span style="color:var(--over)">⚠️ ${fmt(-kLeft)} オーバー</span>`) +
+    summaryCard('タンパク質', fmt(pro), 'g', settings.protein, 'var(--pro)', pro / settings.protein,
+      pLeft > 0 ? `あと <b>${fmt(pLeft)}</b> g` : '🎉 達成！');
+
+  segment($('mealSeg'), MEALS.map((m) => [m, m]), state.meal, (v) => { state.meal = v; renderLog(); });
+  segment($('amountSeg'), AMOUNTS, state.amount, (v) => { state.amount = v; renderLog(); });
+
+  const foods = allFoods();
+  $('chips').innerHTML = foods.map((f, i) =>
+    `<button class="chip" data-i="${i}">${esc(f.name)}<small>${fmt(f.kcal * state.amount)}kcal · P${fmt(f.p * state.amount, 1)}g</small></button>`).join('') +
+    '<button class="chip add" id="openManual">＋ 手入力</button>';
+  $('chips').querySelectorAll('.chip[data-i]').forEach((b) => b.onclick = () => {
+    const f = foods[b.dataset.i], a = state.amount;
+    addEntry(a === 1 ? f.name : `${f.name} ×${a}`, f.kcal * a, f.p * a);
+  });
+  $('openManual').onclick = openSheet;
+
+  if (!day.length) {
+    $('dayList').innerHTML = '<div class="empty">まだ記録がありません</div>';
+    return;
+  }
+  $('dayList').innerHTML = MEALS.map((m) => {
+    const items = day.filter((e) => e.meal === m);
+    if (!items.length) return '';
+    const k = items.reduce((s, e) => s + e.kcal, 0), p = items.reduce((s, e) => s + e.p, 0);
+    return `<div class="meal-h"><b>${m}</b><span>${fmt(k)} kcal · P ${fmt(p, 1)} g</span></div>` +
+      items.map((e) => `<div class="item"><span class="name">${esc(e.name)}</span>
+        <span class="num">${fmt(e.kcal)} kcal<br>P ${fmt(e.p, 1)} g</span>
+        <button class="del" data-id="${e.id}" aria-label="削除">✕</button></div>`).join('');
+  }).join('');
+  $('dayList').querySelectorAll('.del').forEach((b) => b.onclick = () => {
+    const idx = log.findIndex((e) => e.id === b.dataset.id);
+    const [removed] = log.splice(idx, 1);
+    saveLog(); renderLog();
+    toast(`🗑️ ${removed.name} を削除`, () => { log.splice(idx, 0, removed); saveLog(); renderLog(); });
+  });
+}
+
+$('prev').onclick = () => { state.date = addDays(state.date, -1); refreshFoodOrder(); renderLog(); };
+$('next').onclick = () => { state.date = addDays(state.date, 1); refreshFoodOrder(); renderLog(); };
+$('datePick').onchange = (e) => { if (e.target.value) { state.date = e.target.value; refreshFoodOrder(); renderLog(); } };
+
+// ---------- 手入力 ----------
+function openSheet() {
+  hideToast();
+  $('manualForm').reset();
+  $('mSave').checked = true;
+  $('sheet').classList.remove('hidden');
+  setTimeout(() => $('mName').focus(), 50);
+}
+const closeSheet = () => $('sheet').classList.add('hidden');
+$('sheetBg').onclick = closeSheet;
+$('sheetClose').onclick = closeSheet;
+$('manualForm').onsubmit = (ev) => {
+  ev.preventDefault();
+  const name = $('mName').value.trim();
+  const kcal = Number($('mKcal').value) || 0, p = Number($('mPro').value) || 0;
+  if (!kcal && !p) { toast('⚠️ カロリーかタンパク質を入力してください'); return; }
+  if ($('mSave').checked && name) {
+    myFoods = [{ name, kcal: Math.round(kcal), p: Math.round(p * 10) / 10 }, ...myFoods.filter((f) => f.name !== name)];
+    saveFoods();
+  }
+  closeSheet();
+  addEntry(name || '食事', kcal, p);
+};
+
+// ---------- 履歴 ----------
+function barChart(values, labels, goal, color) {
+  const W = 340, H = 170, L = 34, B = 20, T = 8;
+  const max = Math.max(goal * 1.1, ...values) || 1;
+  const step = niceStep(max / 4);
+  const y = (v) => T + (H - T - B) * (1 - v / max);
+  const bw = (W - L) / values.length;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img">`;
+  for (let v = 0; v <= max; v += step) {
+    s += `<line x1="${L}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>` +
+         `<text x="${L - 4}" y="${y(v) + 3}" text-anchor="end">${fmt(v)}</text>`;
+  }
+  const every = Math.ceil(values.length / 7);
+  values.forEach((v, i) => {
+    const x = L + i * bw;
+    if (v > 0) s += `<rect x="${x + bw * 0.15}" y="${y(v)}" width="${bw * 0.7}" height="${y(0) - y(v)}" rx="${Math.min(3, bw * 0.2)}" fill="${color}"/>`;
+    if ((values.length - 1 - i) % every === 0) s += `<text x="${x + bw / 2}" y="${H - 5}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  s += `<line x1="${L}" x2="${W}" y1="${y(goal)}" y2="${y(goal)}" stroke="var(--over)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  return s + '</svg>';
+}
+function niceStep(raw) {
+  const p = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 2.5, 5, 10].map((m) => m * p).find((v) => v >= raw);
+}
+
+function renderHistory() {
+  segment($('periodSeg'), PERIODS.map((n) => [`${n}日`, n]), state.period, (v) => { state.period = v; renderHistory(); });
+  const days = Array.from({ length: state.period }, (_, i) => addDays(today(), i - state.period + 1));
+  const totals = Object.fromEntries(days.map((d) => [d, { kcal: 0, p: 0 }]));
+  log.forEach((e) => { if (totals[e.date]) { totals[e.date].kcal += e.kcal; totals[e.date].p += e.p; } });
+  const rec = days.filter((d) => totals[d].kcal > 0 || totals[d].p > 0);
+  const avg = (k) => rec.length ? rec.reduce((s, d) => s + totals[d][k], 0) / rec.length : 0;
+  const hit = rec.filter((d) => totals[d].p >= settings.protein).length;
+
+  $('stats').innerHTML =
+    `<div class="card"><div class="lbl">平均カロリー</div><div class="val">${fmt(avg('kcal'))}</div></div>
+     <div class="card"><div class="lbl">平均タンパク質</div><div class="val">${fmt(avg('p'))}<small> g</small></div></div>
+     <div class="card"><div class="lbl">P目標達成</div><div class="val">${hit}<small> / ${rec.length}日</small></div></div>`;
+  const labels = days.map((d) => { const x = parseYmd(d); return `${x.getMonth() + 1}/${x.getDate()}`; });
+  $('kcalTtl').innerHTML = `カロリー (kcal) <span style="color:var(--over);font-weight:400">--- 目標 ${fmt(settings.kcal)}</span>`;
+  $('proTtl').innerHTML = `タンパク質 (g) <span style="color:var(--over);font-weight:400">--- 目標 ${settings.protein}</span>`;
+  $('kcalChart').innerHTML = barChart(days.map((d) => totals[d].kcal), labels, settings.kcal, 'var(--kcal)');
+  $('proChart').innerHTML = barChart(days.map((d) => totals[d].p), labels, settings.protein, 'var(--pro)');
+
+  $('dailyTable').innerHTML = rec.length ? rec.slice().reverse().map((d) => {
+    const x = parseYmd(d), t = totals[d];
+    return `<div class="item" data-d="${d}" style="cursor:pointer"><span class="name">${x.getMonth() + 1}/${x.getDate()} (${'日月火水木金土'[x.getDay()]})</span>
+      <span class="num" style="color:${t.kcal > settings.kcal ? 'var(--over)' : 'inherit'}">${fmt(t.kcal)} kcal</span>
+      <span class="num" style="width:72px;color:${t.p >= settings.protein ? 'var(--pro)' : 'inherit'}">P ${fmt(t.p)} g</span>
+      <span class="num" style="width:24px">›</span></div>`;
+  }).join('') : '<div class="empty">この期間の記録はまだありません</div>';
+  $('dailyTable').querySelectorAll('.item').forEach((el) => el.onclick = () => { state.date = el.dataset.d; showTab('log'); });
+}
+
+// ---------- 設定 ----------
+function renderSettings() {
+  $('goalKcal').value = settings.kcal;
+  $('goalPro').value = settings.protein;
+  $('myFoods').innerHTML = myFoods.length ? myFoods.map((f, i) =>
+    `<div class="item"><span class="name">${esc(f.name)}</span><span class="num">${fmt(f.kcal)} kcal<br>P ${fmt(f.p, 1)} g</span>
+     <button class="del" data-i="${i}" aria-label="削除">✕</button></div>`).join('')
+    : '<div class="empty">手入力で「マイ食品に登録」した食品がここに並びます</div>';
+  $('myFoods').querySelectorAll('.del').forEach((b) => b.onclick = () => {
+    const [removed] = myFoods.splice(Number(b.dataset.i), 1);
+    saveFoods(); renderSettings();
+    toast(`🗑️ ${removed.name} を削除`, () => { myFoods.splice(Number(b.dataset.i), 0, removed); saveFoods(); renderSettings(); });
+  });
+}
+$('saveGoals').onclick = () => {
+  const k = Number($('goalKcal').value), p = Number($('goalPro').value);
+  if (!(k > 0 && p > 0)) { toast('⚠️ 目標値を入力してください'); return; }
+  settings = { kcal: Math.round(k), protein: Math.round(p) };
+  store.set('settings', settings);
+  toast('✅ 目標を保存しました');
+};
+
+function download(filename, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('exportJson').onclick = () =>
+  download(`diet-backup-${today()}.json`, JSON.stringify({ version: 1, log, myFoods, settings }, null, 1), 'application/json');
+$('exportCsv').onclick = () => {
+  const rows = [['日付', '時刻', '区分', '食品名', 'カロリー(kcal)', 'タンパク質(g)'],
+    ...[...log].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+      .map((e) => [e.date, e.time, e.meal, e.name, e.kcal, e.p])];
+  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  download(`diet-log-${today()}.csv`, '﻿' + csv, 'text/csv');
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async (ev) => {
+  const file = ev.target.files[0];
+  ev.target.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.log)) throw new Error();
+    if (!confirm(`${data.log.length}件の記録で置き換えます。よろしいですか？`)) return;
+    log = data.log; myFoods = data.myFoods || []; settings = { ...DEFAULT_SETTINGS, ...data.settings };
+    saveLog(); saveFoods(); store.set('settings', settings);
+    renderSettings();
+    toast('✅ 復元しました');
+  } catch {
+    toast('⚠️ このアプリのバックアップファイルではありません');
+  }
+};
+
+// ---------- タブ ----------
+function showTab(tab) {
+  state.tab = tab;
+  ['log', 'history', 'settings'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== tab));
+  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
+  if (tab === 'log') refreshFoodOrder();
+  ({ log: renderLog, history: renderHistory, settings: renderSettings })[tab]();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => showTab(b.dataset.tab));
+
+// 日付をまたいで開きっぱなしでも「今日」に追従する
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.tab === 'log') {
+    const t = today();
+    if (state.lastSeen && state.lastSeen !== t && state.date === state.lastSeen) { state.date = t; state.meal = defaultMeal(); }
+    state.lastSeen = t;
+    refreshFoodOrder();
+    renderLog();
+  }
+});
+state.lastSeen = today();
+
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
+refreshFoodOrder();
+renderLog();
+</script>
+</body>
+</html>
