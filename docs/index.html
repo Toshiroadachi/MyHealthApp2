@@ -67,6 +67,25 @@
   .chip small { display: block; font-size: 0.7rem; color: var(--sub); }
   .chip:active { transform: scale(0.96); background: var(--chip); }
   .chip.add { border-style: dashed; color: var(--accent); font-weight: 700; }
+  .chips.editing .chip[data-i] { border-color: var(--over); position: relative; padding-right: 34px; }
+  .chips.editing .chip[data-i]::after { content: "✕"; position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%); color: var(--over); font-weight: 700; }
+  .h2row { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 8px; }
+  .h2row h2 { margin: 0; }
+  .h2row button { font-size: 0.85rem; color: var(--accent); font-weight: 700; padding: 4px 6px; }
+  .search { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line);
+            background: var(--card); font-size: 16px; margin-bottom: 10px; }
+  .edit-note { font-size: 0.82rem; color: var(--over); margin: -2px 0 8px; }
+  .qnames { display: flex; gap: 6px; flex-wrap: wrap; margin: -4px 0 10px; }
+  .qnames button { font-size: 0.82rem; padding: 5px 12px; border-radius: 999px; background: var(--chip); }
+  .prow { display: grid; grid-template-columns: 1fr 1fr 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .prow input { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+                background: var(--card); font-size: 16px; }
+  .prow .del { width: 36px; height: 36px; border-radius: 10px; color: var(--sub); font-size: 1.1rem; }
+  .phead { display: grid; grid-template-columns: 1fr 1fr 36px; gap: 8px; font-size: 0.8rem; color: var(--sub); margin-bottom: 4px; }
+  .linkbtn { color: var(--accent); font-weight: 700; font-size: 0.9rem; padding: 4px 0 10px; }
+  .total { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 12px;
+           background: var(--chip); font-weight: 700; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
 
   /* 記録一覧 */
   .list { background: var(--card); border-radius: 16px; overflow: hidden; }
@@ -95,7 +114,7 @@
   .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; }
   .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--bg);
            border-radius: 20px 20px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-           max-width: 560px; margin: 0 auto; }
+           max-width: 560px; margin: 0 auto; max-height: 92vh; overflow-y: auto; }
   .sheet h3 { margin: 0 0 12px; font-size: 1.05rem; }
 
   /* 履歴 */
@@ -138,7 +157,9 @@
     <div class="row"><div class="seg" id="mealSeg"></div></div>
     <div class="row"><div class="seg" id="amountSeg"></div></div>
 
-    <h2>タップで追加</h2>
+    <div class="h2row"><h2>タップで追加</h2><button id="editFoods" type="button">✏️ 編集</button></div>
+    <input type="search" class="search" id="foodSearch" placeholder="🔍 食品をさがす" autocomplete="off">
+    <div class="edit-note hidden" id="editNote">消したい食品をタップしてください（「取り消す」で戻せます）</div>
     <div class="chips" id="chips"></div>
 
     <h2>この日の記録</h2>
@@ -166,6 +187,7 @@
 
     <h2>マイ食品</h2>
     <div class="list" id="myFoods"></div>
+    <button class="btn sub hidden" id="restorePresets" style="margin-top:10px"></button>
 
     <h2>バックアップ</h2>
     <p style="font-size:.82rem;color:var(--sub);margin:0 0 10px">記録はこの端末のブラウザに保存されます。機種変更やブラウザのデータ削除に備えて、ときどき保存してください。</p>
@@ -186,13 +208,14 @@
 <div id="sheet" class="hidden">
   <div class="sheet-bg" id="sheetBg"></div>
   <form class="sheet" id="manualForm" autocomplete="off">
-    <h3>✏️ 手入力で追加</h3>
-    <label class="field"><span>食品名</span><input id="mName" placeholder="例：牛丼 並"></label>
-    <div class="grid2">
-      <label class="field"><span>カロリー (kcal)</span><input id="mKcal" type="number" inputmode="numeric" min="0"></label>
-      <label class="field"><span>タンパク質 (g)</span><input id="mPro" type="number" inputmode="decimal" min="0" step="0.1"></label>
-    </div>
-    <label class="check"><input type="checkbox" id="mSave" checked>マイ食品に登録（次回からタップで追加）</label>
+    <h3 id="sheetTitle">✏️ 手入力で追加</h3>
+    <label class="field"><span>名前（空欄でもOK）</span><input id="mName" placeholder="例：牛丼 並"></label>
+    <div class="qnames" id="qnames"></div>
+    <div class="phead"><span>カロリー (kcal)</span><span>タンパク質 (g)</span><span></span></div>
+    <div id="prows"></div>
+    <button type="button" class="linkbtn" id="addRow">＋ 品目を追加（複数の料理を合計）</button>
+    <div class="total hidden" id="mTotal"></div>
+    <label class="check"><input type="checkbox" id="mSave">マイ食品に登録（次回からタップで追加）</label>
     <button class="btn" type="submit">追加する</button>
     <button class="btn sub" type="button" id="sheetClose">閉じる</button>
   </form>
@@ -229,9 +252,11 @@ const store = {
 };
 let log = store.get('log', []);           // {id, date, time, meal, name, kcal, p}
 let myFoods = store.get('foods', []);     // {name, kcal, p}
+let hiddenPresets = store.get('hiddenPresets', []);  // 削除した初期食品の名前
 let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
 const saveLog = () => store.set('log', log);
 const saveFoods = () => store.set('foods', myFoods);
+const saveHidden = () => store.set('hiddenPresets', hiddenPresets);
 
 // ---------- 状態 ----------
 const $ = (id) => document.getElementById(id);
@@ -251,7 +276,7 @@ function defaultMeal() {
   return '間食';
 }
 
-const state = { date: today(), meal: defaultMeal(), amount: 1, period: 7, tab: 'log' };
+const state = { date: today(), meal: defaultMeal(), amount: 1, period: 7, tab: 'log', editing: false, query: '' };
 
 // ---------- 共通 UI ----------
 function segment(el, items, current, onPick) {
@@ -301,7 +326,8 @@ function sortedFoods() {
   const count = {};
   log.forEach((e) => { if (e.date >= since) { const base = e.name.replace(/ ×[\d.]+$/, ''); count[base] = (count[base] || 0) + 1; } });
   const seen = new Set();
-  const foods = [...myFoods, ...PRESET_FOODS].filter((f) => !seen.has(f.name) && seen.add(f.name));
+  const presets = PRESET_FOODS.filter((f) => !hiddenPresets.includes(f.name));
+  const foods = [...myFoods, ...presets].filter((f) => !seen.has(f.name) && seen.add(f.name));
   return foods.map((f, i) => ({ ...f, i })).sort((a, b) => (count[b.name] || 0) - (count[a.name] || 0) || a.i - b.i);
 }
 
@@ -334,15 +360,7 @@ function renderLog() {
   segment($('mealSeg'), MEALS.map((m) => [m, m]), state.meal, (v) => { state.meal = v; renderLog(); });
   segment($('amountSeg'), AMOUNTS, state.amount, (v) => { state.amount = v; renderLog(); });
 
-  const foods = allFoods();
-  $('chips').innerHTML = foods.map((f, i) =>
-    `<button class="chip" data-i="${i}">${esc(f.name)}<small>${fmt(f.kcal * state.amount)}kcal · P${fmt(f.p * state.amount, 1)}g</small></button>`).join('') +
-    '<button class="chip add" id="openManual">＋ 手入力</button>';
-  $('chips').querySelectorAll('.chip[data-i]').forEach((b) => b.onclick = () => {
-    const f = foods[b.dataset.i], a = state.amount;
-    addEntry(a === 1 ? f.name : `${f.name} ×${a}`, f.kcal * a, f.p * a);
-  });
-  $('openManual').onclick = openSheet;
+  renderChips();
 
   if (!day.length) {
     $('dayList').innerHTML = '<div class="empty">まだ記録がありません</div>';
@@ -365,32 +383,104 @@ function renderLog() {
   });
 }
 
+function renderChips() {
+  const q = state.query.trim().toLowerCase();
+  const foods = allFoods().filter((f) => !q || f.name.toLowerCase().includes(q));
+  $('editFoods').textContent = state.editing ? '✔ 完了' : '✏️ 編集';
+  $('editNote').classList.toggle('hidden', !state.editing);
+  $('chips').classList.toggle('editing', state.editing);
+  $('chips').innerHTML = foods.map((f, i) =>
+    `<button class="chip" data-i="${i}">${esc(f.name)}<small>${fmt(f.kcal * state.amount)}kcal · P${fmt(f.p * state.amount, 1)}g</small></button>`).join('') +
+    (state.editing ? '' : '<button class="chip add" id="openManual">＋ 手入力</button>' +
+      '<button class="chip add" id="openTotal">🍱 合計だけ入力<small>社食・外食など</small></button>') +
+    (foods.length || state.editing ? '' : '<div class="empty" style="width:100%;padding:4px">見つかりません</div>');
+  $('chips').querySelectorAll('.chip[data-i]').forEach((b) => b.onclick = () => {
+    const f = foods[b.dataset.i];
+    if (state.editing) { deleteFood(f); return; }
+    const a = state.amount;
+    addEntry(a === 1 ? f.name : `${f.name} ×${a}`, f.kcal * a, f.p * a);
+  });
+  if (!state.editing) {
+    $('openManual').onclick = () => openSheet(false);
+    $('openTotal').onclick = () => openSheet(true);
+  }
+}
+
+function deleteFood(f) {
+  const before = { myFoods: [...myFoods], hidden: [...hiddenPresets] };
+  myFoods = myFoods.filter((x) => x.name !== f.name);
+  if (PRESET_FOODS.some((x) => x.name === f.name)) hiddenPresets = [...hiddenPresets, f.name];
+  saveFoods(); saveHidden(); renderChips();
+  toast(`🗑️ ${f.name} を削除`, () => {
+    myFoods = before.myFoods; hiddenPresets = before.hidden; saveFoods(); saveHidden(); renderChips();
+  });
+}
+
+$('editFoods').onclick = () => { state.editing = !state.editing; renderChips(); };
+$('foodSearch').oninput = (e) => { state.query = e.target.value; renderChips(); };
+
 $('prev').onclick = () => { state.date = addDays(state.date, -1); refreshFoodOrder(); renderLog(); };
 $('next').onclick = () => { state.date = addDays(state.date, 1); refreshFoodOrder(); renderLog(); };
 $('datePick').onchange = (e) => { if (e.target.value) { state.date = e.target.value; refreshFoodOrder(); renderLog(); } };
 
 // ---------- 手入力 ----------
-function openSheet() {
+const QUICK_NAMES = ['社食', '外食', 'コンビニ', '自炊'];
+
+function addRow(focus) {
+  const row = document.createElement('div');
+  row.className = 'prow';
+  row.innerHTML = '<input type="number" inputmode="numeric" min="0" class="rk" placeholder="0">' +
+    '<input type="number" inputmode="decimal" min="0" step="0.1" class="rp" placeholder="0">' +
+    '<button type="button" class="del" aria-label="この品目を削除">✕</button>';
+  row.querySelector('.del').onclick = () => { row.remove(); if (!$('prows').children.length) addRow(); updateTotal(); };
+  row.querySelectorAll('input').forEach((i) => i.oninput = updateTotal);
+  $('prows').appendChild(row);
+  if (focus) row.querySelector('.rk').focus();
+  updateTotal();
+}
+function readRows() {
+  return [...$('prows').children].map((r) => ({
+    kcal: Number(r.querySelector('.rk').value) || 0, p: Number(r.querySelector('.rp').value) || 0,
+  })).filter((r) => r.kcal || r.p);
+}
+function updateTotal() {
+  const rows = $('prows').children.length;
+  [...$('prows').children].forEach((r) => r.querySelector('.del').style.visibility = rows > 1 ? 'visible' : 'hidden');
+  const items = readRows();
+  const k = items.reduce((s, r) => s + r.kcal, 0), p = items.reduce((s, r) => s + r.p, 0);
+  $('mTotal').innerHTML = `<span>合計（${items.length}品）</span><span>${fmt(k)} kcal · P ${fmt(p, 1)} g</span>`;
+  $('mTotal').classList.toggle('hidden', rows < 2);
+}
+
+function openSheet(totalMode) {
   hideToast();
   $('manualForm').reset();
-  $('mSave').checked = true;
+  $('prows').innerHTML = '';
+  $('sheetTitle').textContent = totalMode ? '🍱 合計だけ入力' : '✏️ 手入力で追加';
+  $('qnames').innerHTML = QUICK_NAMES.map((n) => `<button type="button">${n}</button>`).join('');
+  $('qnames').querySelectorAll('button').forEach((b) => b.onclick = () => { $('mName').value = b.textContent; });
+  if (totalMode) $('mName').value = '社食';
+  addRow();
+  if (totalMode) addRow();
   $('sheet').classList.remove('hidden');
-  setTimeout(() => $('mName').focus(), 50);
+  setTimeout(() => (totalMode ? $('prows').querySelector('.rk') : $('mName')).focus(), 50);
 }
 const closeSheet = () => $('sheet').classList.add('hidden');
 $('sheetBg').onclick = closeSheet;
 $('sheetClose').onclick = closeSheet;
+$('addRow').onclick = () => addRow(true);
 $('manualForm').onsubmit = (ev) => {
   ev.preventDefault();
-  const name = $('mName').value.trim();
-  const kcal = Number($('mKcal').value) || 0, p = Number($('mPro').value) || 0;
-  if (!kcal && !p) { toast('⚠️ カロリーかタンパク質を入力してください'); return; }
+  const items = readRows();
+  if (!items.length) { toast('⚠️ カロリーかタンパク質を入力してください'); return; }
+  const kcal = items.reduce((s, r) => s + r.kcal, 0), p = items.reduce((s, r) => s + r.p, 0);
+  const name = $('mName').value.trim() + (items.length > 1 ? `（${items.length}品）` : '');
   if ($('mSave').checked && name) {
     myFoods = [{ name, kcal: Math.round(kcal), p: Math.round(p * 10) / 10 }, ...myFoods.filter((f) => f.name !== name)];
     saveFoods();
   }
   closeSheet();
-  addEntry(name || '食事', kcal, p);
+  addEntry(name || state.meal, kcal, p);
 };
 
 // ---------- 履歴 ----------
@@ -456,12 +546,18 @@ function renderSettings() {
     `<div class="item"><span class="name">${esc(f.name)}</span><span class="num">${fmt(f.kcal)} kcal<br>P ${fmt(f.p, 1)} g</span>
      <button class="del" data-i="${i}" aria-label="削除">✕</button></div>`).join('')
     : '<div class="empty">手入力で「マイ食品に登録」した食品がここに並びます</div>';
+  $('restorePresets').classList.toggle('hidden', !hiddenPresets.length);
+  $('restorePresets').textContent = `↩️ 削除した初期の食品を戻す（${hiddenPresets.length}件）`;
   $('myFoods').querySelectorAll('.del').forEach((b) => b.onclick = () => {
     const [removed] = myFoods.splice(Number(b.dataset.i), 1);
     saveFoods(); renderSettings();
     toast(`🗑️ ${removed.name} を削除`, () => { myFoods.splice(Number(b.dataset.i), 0, removed); saveFoods(); renderSettings(); });
   });
 }
+$('restorePresets').onclick = () => {
+  hiddenPresets = []; saveHidden(); renderSettings();
+  toast('✅ 初期の食品を戻しました');
+};
 $('saveGoals').onclick = () => {
   const k = Number($('goalKcal').value), p = Number($('goalPro').value);
   if (!(k > 0 && p > 0)) { toast('⚠️ 目標値を入力してください'); return; }
@@ -478,7 +574,7 @@ function download(filename, text, type) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 $('exportJson').onclick = () =>
-  download(`diet-backup-${today()}.json`, JSON.stringify({ version: 1, log, myFoods, settings }, null, 1), 'application/json');
+  download(`diet-backup-${today()}.json`, JSON.stringify({ version: 1, log, myFoods, hiddenPresets, settings }, null, 1), 'application/json');
 $('exportCsv').onclick = () => {
   const rows = [['日付', '時刻', '区分', '食品名', 'カロリー(kcal)', 'タンパク質(g)'],
     ...[...log].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
@@ -495,8 +591,9 @@ $('importFile').onchange = async (ev) => {
     const data = JSON.parse(await file.text());
     if (!Array.isArray(data.log)) throw new Error();
     if (!confirm(`${data.log.length}件の記録で置き換えます。よろしいですか？`)) return;
-    log = data.log; myFoods = data.myFoods || []; settings = { ...DEFAULT_SETTINGS, ...data.settings };
-    saveLog(); saveFoods(); store.set('settings', settings);
+    log = data.log; myFoods = data.myFoods || []; hiddenPresets = data.hiddenPresets || [];
+    settings = { ...DEFAULT_SETTINGS, ...data.settings };
+    saveLog(); saveFoods(); saveHidden(); store.set('settings', settings);
     renderSettings();
     toast('✅ 復元しました');
   } catch {
@@ -510,6 +607,7 @@ function showTab(tab) {
   ['log', 'history', 'settings'].forEach((t) => $('tab-' + t).classList.toggle('hidden', t !== tab));
   document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   if (tab === 'log') refreshFoodOrder();
+  state.editing = false;
   ({ log: renderLog, history: renderHistory, settings: renderSettings })[tab]();
   window.scrollTo(0, 0);
 }

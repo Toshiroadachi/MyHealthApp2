@@ -1,5 +1,5 @@
 // オフラインでも開けるようにする（オンライン時は常に最新版を取得）
-const CACHE = 'diet-v1';
+const CACHE = 'diet-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
